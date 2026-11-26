@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Для тебя ♥ — букет пионов</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #070408;
+      --pink: #ff87b7;
+      --text: #f7eef4;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; padding: 0; width: 100%; min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+    canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+    /* ---------- подпись «Для тебя» + сердечко ---------- */
+    .caption {
+      position: fixed;
+      left: 0; right: 0; bottom: 4.5vh;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity 1.4s ease, transform 1.4s cubic-bezier(0.22, 1, 0.36, 1);
+      pointer-events: none;
+      z-index: 5;
+    }
+    .caption.show { opacity: 1; transform: translateY(0); }
+    .caption-text {
+      font-family: Georgia, "Times New Roman", "Palatino Linotype", serif;
+      font-size: clamp(30px, 7.5vw, 56px);
+      letter-spacing: 0.06em;
+      color: #fff;
+      text-shadow: 0 0 18px rgba(255, 135, 183, 0.45), 0 0 44px rgba(255, 135, 183, 0.25);
+    }
+    .heart {
+      font-size: clamp(44px, 11vw, 84px);
+      line-height: 1;
+      color: var(--pink);
+      text-shadow: 0 0 22px rgba(255, 110, 165, 0.75), 0 0 60px rgba(255, 110, 165, 0.4);
+      animation: heartPulse 1.6s ease-in-out infinite;
+    }
+    @keyframes heartPulse {
+      0%, 100% { transform: scale(1); }
+      12%      { transform: scale(1.22); }
+      24%      { transform: scale(1); }
+      36%      { transform: scale(1.14); }
+      50%      { transform: scale(1); }
+    }
+
+    /* ---------- стартовый оверлей ---------- */
+    .tap-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: var(--bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+      cursor: pointer;
+      transition: opacity 0.9s ease, visibility 0.9s ease;
+    }
+    .tap-overlay.dismissed { opacity: 0; visibility: hidden; pointer-events: none; }
+    .tap-accent {
+      font-size: 30px; color: #ffd7e8;
+      text-shadow: 0 0 24px rgba(255, 135, 183, 0.8);
+      animation: floatSparkle 2.8s ease-in-out infinite;
+    }
+    @keyframes floatSparkle {
+      0%, 100% { transform: translateY(0) scale(1); opacity: 0.85; }
+      50%      { transform: translateY(-6px) scale(1.08); opacity: 1; }
+    }
+    .tap-prompt {
+      margin: 0;
+      font-size: clamp(24px, 4.5vw, 38px);
+      font-weight: 500;
+      color: #fff;
+      animation: pulsePrompt 2.4s ease-in-out infinite;
+    }
+    @keyframes pulsePrompt {
+      0%, 100% { opacity: 0.7; letter-spacing: 0.04em; }
+      50%      { opacity: 1; letter-spacing: 0.08em; }
+    }
+
+    /* ---------- кнопка повтора мелодии ---------- */
+    #musicBtn {
+      position: fixed; top: 14px; right: 14px; z-index: 50;
+      width: 42px; height: 42px; border-radius: 50%;
+      border: 1px solid rgba(255, 135, 183, 0.35);
+      background: rgba(255, 135, 183, 0.08);
+      color: #ffb9d4; font-size: 19px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.8s ease, background 0.25s ease, transform 0.15s ease;
+      cursor: pointer;
+    }
+    #musicBtn.on { opacity: 1; pointer-events: auto; }
+    #musicBtn:hover { background: rgba(255, 135, 183, 0.18); }
+    #musicBtn:active { transform: scale(0.92); }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div class="caption" id="caption" aria-hidden="true">
+    <div class="caption-text">Для тебя</div>
+    <div class="heart">♥</div>
+  </div>
+
+  <button id="musicBtn" title="Играть мелодию ещё раз" aria-label="Играть мелодию ещё раз">♪</button>
+
+  <div class="tap-overlay" id="tapOverlay">
+    <div class="tap-accent">❀</div>
+    <p class="tap-prompt">Нажми на экран</p>
+  </div>
+
+  <script>
+  (function () {
+    "use strict";
+
+    var canvas = document.getElementById("c");
+    var ctx = canvas.getContext("2d");
+    var overlay = document.getElementById("tapOverlay");
+    var caption = document.getElementById("caption");
+    var musicBtn = document.getElementById("musicBtn");
+
+    var W = 0, H = 0, M = 0, DPR = 1;
+    var TAU = Math.PI * 2;
+    var started = false;
+    var t0 = 0;
+
+    /* ================= утилиты ================= */
+    function clamp01(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
+    function easeOutCubic(x) { x = clamp01(x); return 1 - Math.pow(1 - x, 3); }
+    function easeOutBack(x) {
+      x = clamp01(x);
+      var s = 1.35;
+      return 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2);
+    }
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    function hexToRgb(h) {
+      var n = parseInt(h.slice(1), 16);
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+    function mix(c1, c2, t) {
+      var a = hexToRgb(c1), b = hexToRgb(c2);
+      return "rgb(" + Math.round(lerp(a[0], b[0], t)) + "," +
+                    Math.round(lerp(a[1], b[1], t)) + "," +
+                    Math.round(lerp(a[2], b[2], t)) + ")";
+    }
+
+    /* ================= раскладка ================= */
+    // 3 розетки пионов: центр крупная, по бокам поменьше
+    var HEADS = [
+      { x: 0.500, y: 0.300, r: 0.210, phase: 0.0, order: 0 },
+      { x: 0.315, y: 0.430, r: 0.155, phase: 1.3, order: 1 },
+      { x: 0.685, y: 0.450, r: 0.150, phase: 2.2, order: 2 }
+    ];
+    var WRAP_TOP_Y = 0.585, WRAP_BOTTOM_Y = 0.970;
+
+    // слои лепестков пиона: от внешнего к внутреннему
+    var LAYERS = [
+      { count: 10, len: 1.00, wid: 0.52, dark: "#c85a8e", light: "#f2a9c8" },
+      { count: 8,  len: 0.74, wid: 0.47, dark: "#d96ba0", light: "#f8c3d9" },
+      { count: 7,  len: 0.50, wid: 0.40, dark: "#e88bb5", light: "#fddae8" }
+    ];
+
+    // предгенерация случайных параметров лепестков (стабильны между кадрами)
+    var headSeeds = HEADS.map(function () {
+      return LAYERS.map(function (L) {
+        var petals = [];
+        for (var i = 0; i < L.count; i++) {
+          petals.push({
+            ang: (i / L.count) * TAU + (Math.random() - 0.5) * 0.35,
+            lenMul: 0.92 + Math.random() * 0.16,
+            widMul: 0.90 + Math.random() * 0.20,
+            tilt: (Math.random() - 0.5) * 0.16,
+            shade: Math.random()
+          });
+        }
+        return petals;
+      });
+    });
+
+    /* ================= частицы ================= */
+    var petals = [];
+    for (var p = 0; p < 14; p++) petals.push(newPetal(true));
+    function newPetal(anywhere) {
+      return {
+        x: Math.random() * W,
+        y: anywhere ? Math.random() * H : -20,
+        vy: 18 + Math.random() * 26,
+        vx: (Math.random() - 0.5) * 14,
+        rot: Math.random() * TAU,
+        vr: (Math.random() - 0.5) * 1.6,
+        s: 5 + Math.random() * 7,
+        a: 0.28 + Math.random() * 0.35
+      };
+    }
+    var sparkles = [];
+    for (var s = 0; s < 22; s++) sparkles.push({
+      x: Math.random(), y: Math.random(),
+      ph: Math.random() * TAU, sp: 0.6 + Math.random() * 1.4,
+      r: 0.6 + Math.random() * 1.4
+    });
+
+    /* ================= размеры ================= */
+    function resize() {
+      DPR = Math.min(window.devicePixelRatio || 1, 2);
+      W = window.innerWidth; H = window.innerHeight;
+      M = Math.min(W, H);
+      canvas.width = Math.round(W * DPR);
+      canvas.height = Math.round(H * DPR);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    /* ================= рисунок: лепесток ================= */
+    function petalPath(len, wid) {
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(-wid, -len * 0.30, -wid * 0.95, -len * 0.70, -wid * 0.35, -len * 0.92);
+      // рваный, волнистый край лепестка
+      ctx.quadraticCurveTo(-wid * 0.48, -len * 1.05, -wid * 0.18, -len * 1.00);
+      ctx.quadraticCurveTo(-wid * 0.10, -len * 0.90, 0, -len * 0.93);
+      ctx.quadraticCurveTo(wid * 0.10, -len * 0.90, wid * 0.18, -len * 1.00);
+      ctx.quadraticCurveTo(wid * 0.48, -len * 1.05, wid * 0.35, -len * 0.92);
+      ctx.bezierCurveTo(wid * 0.95, -len * 0.70, wid, -len * 0.30, 0, 0);
+      ctx.closePath();
+    }
+
+    function drawPeony(head, cx, cy, t) {
+      var R = head.r * M;
+      var sway = Math.sin(t * 0.8 + head.phase) * 0.03;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(sway);
+
+      // мягкая тень-подсветка под розеткой
+      var glow = ctx.createRadialGradient(0, 0, R * 0.2, 0, 0, R * 1.5);
+      glow.addColorStop(0, "rgba(255,140,190,0.14)");
+      glow.addColorStop(1, "rgba(255,140,190,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(0, 0, R * 1.5, 0, TAU); ctx.fill();
+
+      var headStart = 0.35 + head.order * 0.35;
+
+      for (var li = 0; li < LAYERS.length; li++) {
+        var L = LAYERS[li];
+        var petals_ = headSeeds[head.phase === 0 ? 0 : (head.phase === 1.3 ? 1 : 2)][li];
+        for (var i = 0; i < L.count; i++) {
+          var pt = petals_[i];
+          var delay = headStart + li * 0.16 + i * 0.05;
+          var pr = clamp01((t - delay) / 1.15);
+          if (pr <= 0) continue;
+          var sc = easeOutBack(pr);
+          var len = R * L.len * pt.lenMul * sc;
+          var wid = R * L.wid * pt.widMul * sc;
+          var ang = pt.ang + pt.tilt * (1 - pr) * 2;
+
+          ctx.save();
+          ctx.rotate(ang);
+          var g = ctx.createLinearGradient(0, 0, 0, -len * 1.02);
+          g.addColorStop(0, mix(L.dark, L.light, 0.10 + pt.shade * 0.10));
+          g.addColorStop(0.55, L.dark);
+          g.addColorStop(1, mix(L.light, "#ffffff", pt.shade * 0.25));
+          ctx.fillStyle = g;
+          ctx.strokeStyle = "rgba(150,45,95,0.28)";
+          ctx.lineWidth = Math.max(0.6, M * 0.0008);
+          petalPath(len, wid);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      // центр: пыльник
+      var centerPr = easeOutCubic(clamp01((t - headStart - 0.55) / 0.8));
+      if (centerPr > 0) {
+        ctx.save();
+        ctx.scale(centerPr, centerPr);
+        ctx.fillStyle = "#fbe9f2";
+        ctx.beginPath(); ctx.arc(0, 0, R * 0.11, 0, TAU); ctx.fill();
+        for (var k = 0; k < 10; k++) {
+          var a2 = (k / 10) * TAU + 0.3;
+          var d1 = R * 0.06, d2 = R * 0.13;
+          ctx.strokeStyle = "rgba(244,201,93,0.9)";
+          ctx.lineWidth = Math.max(0.7, M * 0.0009);
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a2) * d1, Math.sin(a2) * d1);
+          ctx.lineTo(Math.cos(a2) * d2, Math.sin(a2) * d2);
+          ctx.stroke();
+          ctx.fillStyle = "#f4c95d";
+          ctx.beginPath();
+          ctx.arc(Math.cos(a2) * d2, Math.sin(a2) * d2, Math.max(1, M * 0.0022), 0, TAU);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    /* ================= рисунок: стебли, листья ================= */
+    function stemPoint(head, f, swayAmp) {
+      // P0 — основание цветка, P1 — точка сборки букета
+      var x0 = head.x * W, y0 = head.y * H + head.r * M * 0.55;
+      var x1 = W * 0.5, y1 = H * (WRAP_TOP_Y + 0.05);
+      var mx = (x0 + x1) / 2 + Math.sin(tGlobal * 0.7 + head.phase) * swayAmp;
+      var my = (y0 + y1) / 2 + 14;
+      var u = 1 - f;
+      var x = u * u * x0 + 2 * u * f * mx + f * f * x1;
+      var y = u * u * y0 + 2 * u * f * my + f * f * y1;
+      return { x: x, y: y,
+               dx: 2 * u * (mx - x0) + 2 * f * (x1 - mx),
+               dy: 2 * u * (my - y0) + 2 * f * (y1 - my) };
+    }
+
+    var tGlobal = 0;
+
+    function drawStems(t) {
+      ctx.lineCap = "round";
+      for (var i = 0; i < HEADS.length; i++) {
+        var head = HEADS[i];
+        var grow = easeOutCubic(clamp01((t - 0.15 - head.order * 0.12) / 0.7));
+        if (grow <= 0) continue;
+        ctx.strokeStyle = "#4d7c49";
+        ctx.lineWidth = Math.max(3, M * 0.011);
+        ctx.beginPath();
+        var N = 18;
+        for (var j = 0; j <= N; j++) {
+          var f = (j / N) * grow;
+          var pt = stemPoint(head, f, M * 0.012);
+          if (j === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.stroke();
+
+        // листик на стебле
+        var lf = 0.55;
+        var lp = easeOutCubic(clamp01((t - 0.55 - head.order * 0.12) / 0.6));
+        if (lp > 0) {
+          var lp2 = stemPoint(head, lf, M * 0.012);
+          var side = i === 1 ? -1 : 1;
+          var la = Math.atan2(lp2.dy, lp2.dx) + side * 0.9;
+          var llen = M * 0.075 * lp;
+          ctx.save();
+          ctx.translate(lp2.x, lp2.y);
+          ctx.rotate(la);
+          ctx.fillStyle = "#5d8f58";
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.bezierCurveTo(llen * 0.35, -llen * 0.30, llen * 0.78, -llen * 0.24, llen, 0);
+          ctx.bezierCurveTo(llen * 0.78, llen * 0.24, llen * 0.35, llen * 0.30, 0, 0);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = "rgba(30,60,30,0.5)";
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(llen * 0.08, 0); ctx.lineTo(llen * 0.9, 0); ctx.stroke();
+          ctx.restore();
+        }
+      }
+    }
+
+    /* ================= рисунок: обёртка и бант ================= */
+    function drawWrap(t) {
+      var a = easeOutCubic(clamp01((t - 0.25) / 0.8));
+      if (a <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = a;
+
+      var cx = W * 0.5;
+      var topY = H * WRAP_TOP_Y;
+      var botY = H * WRAP_BOTTOM_Y;
+      var hwT = M * 0.135, hwB = M * 0.185;
+
+      // бумага
+      var g = ctx.createLinearGradient(cx - hwB, 0, cx + hwB, 0);
+      g.addColorStop(0, "#efe5d5");
+      g.addColorStop(0.5, "#f8f1e6");
+      g.addColorStop(1, "#e5d9c7");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(cx - hwT, topY + H * 0.055);
+      ctx.lineTo(cx, topY);
+      ctx.lineTo(cx + hwT, topY + H * 0.055);
+      ctx.lineTo(cx + hwB, botY);
+      ctx.lineTo(cx - hwB, botY);
+      ctx.closePath();
+      ctx.fill();
+
+      // складки
+      ctx.strokeStyle = "rgba(90,70,50,0.16)";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx, topY); ctx.lineTo(cx - hwB * 0.55, botY); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, topY); ctx.lineTo(cx + hwB * 0.55, botY); ctx.stroke();
+
+      // лента
+      var ry = lerp(topY, botY, 0.38);
+      var halfAtRy = lerp(hwT, hwB, 0.38);
+      var rh = Math.max(8, H * 0.026);
+      var rg = ctx.createLinearGradient(0, ry - rh, 0, ry + rh);
+      rg.addColorStop(0, "#f7a8c6");
+      rg.addColorStop(1, "#e07ba8");
+      ctx.fillStyle = rg;
+      ctx.beginPath();
+      ctx.moveTo(cx - halfAtRy, ry - rh / 2 + 3);
+      ctx.quadraticCurveTo(cx, ry - rh / 2 - 4, cx + halfAtRy, ry - rh / 2 + 3);
+      ctx.lineTo(cx + halfAtRy, ry + rh / 2 + 3);
+      ctx.quadraticCurveTo(cx, ry + rh / 2 - 4, cx - halfAtRy, ry + rh / 2 + 3);
+      ctx.closePath();
+      ctx.fill();
+
+      // бантик
+      var bx = cx, by = ry;
+      var lx = M * 0.042, ly = M * 0.024;
+      ctx.fillStyle = "#f291b6";
+      ctx.strokeStyle = "#c96a95";
+      ctx.lineWidth = 1.2;
+      // хвостики
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.quadraticCurveTo(bx - lx * 0.7, by + ly * 1.6, bx - lx * 0.9, by + ly * 2.6);
+      ctx.quadraticCurveTo(bx - lx * 0.3, by + ly * 1.8, bx, by + ly * 0.6);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.quadraticCurveTo(bx + lx * 0.7, by + ly * 1.6, bx + lx * 0.9, by + ly * 2.6);
+      ctx.quadraticCurveTo(bx + lx * 0.3, by + ly * 1.8, bx, by + ly * 0.6);
+      ctx.closePath(); ctx.fill();
+      // петли
+      ctx.beginPath(); ctx.ellipse(bx - lx * 0.95, by - ly * 0.35, lx, ly, -0.45, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(bx + lx * 0.95, by - ly * 0.35, lx, ly,  0.45, 0, TAU); ctx.fill(); ctx.stroke();
+      // узелок
+      ctx.fillStyle = "#e07ba8";
+      ctx.beginPath(); ctx.arc(bx, by, ly * 0.5, 0, TAU); ctx.fill();
+
+      ctx.restore();
+    }
+
+    /* ================= частицы: лепестки и мерцания ================= */
+    function updatePetals(dt, t) {
+      for (var i = 0; i < petals.length; i++) {
+        var pt = petals[i];
+        pt.y += pt.vy * dt;
+        pt.x += (pt.vx + Math.sin(t * 1.2 + i) * 8) * dt;
+        pt.rot += pt.vr * dt;
+        if (pt.y > H + 24) petals[i] = newPetal(false);
+      }
+      ctx.save();
+      for (var j = 0; j < petals.length; j++) {
+        var q = petals[j];
+        ctx.save();
+        ctx.translate(q.x, q.y);
+        ctx.rotate(q.rot);
+        ctx.globalAlpha = q.a;
+        ctx.fillStyle = "#f4a9c9";
+        petalPath(q.s * 1.6, q.s * 0.8);
+        ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    function drawSparkles(t) {
+      ctx.save();
+      for (var i = 0; i < sparkles.length; i++) {
+        var sp = sparkles[i];
+        var tw = (Math.sin(t * sp.sp + sp.ph) + 1) / 2;
+        ctx.globalAlpha = 0.10 + tw * 0.45;
+        ctx.fillStyle = tw > 0.75 ? "#ffd7e8" : "#ffffff";
+        ctx.beginPath();
+        ctx.arc(sp.x * W, sp.y * H, sp.r * (0.6 + tw * 0.7), 0, TAU);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    /* ================= главный цикл ================= */
+    var lastNow = 0;
+    function frame(nowMs) {
+      var now = nowMs / 1000;
+      var dt = Math.min(0.05, now - lastNow || 0.016);
+      lastNow = now;
+      tGlobal = now;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // фон
+      ctx.fillStyle = "#070408";
+      ctx.fillRect(0, 0, W, H);
+      var bg = ctx.createRadialGradient(W * 0.5, H * 0.42, M * 0.05, W * 0.5, H * 0.42, M * 0.75);
+      bg.addColorStop(0, "rgba(255,120,175,0.07)");
+      bg.addColorStop(1, "rgba(255,120,175,0)");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      drawSparkles(now);
+
+      if (started) {
+        var t = now - t0;
+        drawStems(t);
+        drawWrap(t);
+        for (var i = 0; i < HEADS.length; i++) {
+          drawPeony(HEADS[i], HEADS[i].x * W, HEADS[i].y * H, t);
+        }
+        updatePetals(dt, now);
+
+        if (t > 1.7 && !caption.classList.contains("show")) {
+          caption.classList.add("show");
+        }
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    /* ================= музыка (Web Audio, без файлов) ================= */
+    var actx = null, masterGain = null;
+    function ensureAudio() {
+      if (actx) { if (actx.state === "suspended") actx.resume(); return; }
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      actx = new AC();
+      var filt = actx.createBiquadFilter();
+      filt.type = "lowpass"; filt.frequency.value = 4200;
+      masterGain = actx.createGain();
+      masterGain.gain.value = 0.9;
+      filt.connect(masterGain);
+      masterGain.connect(actx.destination);
+    }
+    function playMusicBoxNote(freq, when, dur) {
+      if (!actx) return;
+      var t0n = actx.currentTime + when;
+      // основной тон + две слабые гармоники — звук «шкатулки»
+      var partials = [ [1, 0.16], [2.0, 0.045], [4.2, 0.012] ];
+      for (var i = 0; i < partials.length; i++) {
+        var o = actx.createOscillator();
+        o.type = "sine";
+        o.frequency.value = freq * partials[i][0];
+        o.detune.value = (Math.random() - 0.5) * 5;
+        var g = actx.createGain();
+        g.gain.setValueAtTime(0.0001, t0n);
+        g.gain.exponentialRampToValueAtTime(partials[i][1], t0n + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0n + dur);
+        o.connect(g); g.connect(masterGain);
+        o.start(t0n); o.stop(t0n + dur + 0.1);
+      }
+    }
+    var MELODY = [523.25, 659.25, 783.99, 1046.5, 987.77, 783.99, 659.25, 783.99,
+                  880.00, 739.99, 587.33, 739.99, 659.25, 523.25, 783.99, 523.25];
+    function playMelody() {
+      ensureAudio();
+      if (!actx) return;
+      var step = 0.30;
+      for (var i = 0; i < MELODY.length; i++) {
+        playMusicBoxNote(MELODY[i], i * step, 1.7);
+      }
+    }
+
+    /* ================= запуск ================= */
+    function start() {
+      if (started) return;
+      started = true;
+      t0 = performance.now() / 1000;
+      overlay.classList.add("dismissed");
+      musicBtn.classList.add("on");
+      playMelody();
+    }
+    overlay.addEventListener("pointerdown", start, { once: true });
+    window.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") start();
+    }, { once: true });
+    musicBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      playMelody();
+    });
+  })();
+  </script>
+</body>
+</html>

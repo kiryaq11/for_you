@@ -3,48 +3,86 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Для тебя ♥ — букет пионов</title>
+  <title>Для тебя ♥ — букет роз</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #070408;
+      --bg: #060309;
       --pink: #ff87b7;
-      --text: #f7eef4;
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body {
       margin: 0; padding: 0; width: 100%; min-height: 100vh;
       background: var(--bg);
-      color: var(--text);
+      color: #fff;
       font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       overflow: hidden;
       user-select: none;
     }
-    canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    body { display: flex; align-items: center; justify-content: center; }
 
-    /* ---------- подпись «Для тебя» + сердечко ---------- */
+    #stage {
+      position: relative;
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3vh;
+      padding: 14px 8px;
+    }
+
+    /* ---------- ASCII-букет роз ---------- */
+    #art {
+      font-family: "JetBrains Mono", "Courier New", Courier, monospace;
+      font-weight: 700;
+      font-size: clamp(7px, 2.25vw, 13px);
+      line-height: 1.0;
+      letter-spacing: 0;
+      display: grid;
+      grid-template-columns: repeat(56, 1ch);
+      filter: drop-shadow(0 0 22px rgba(255, 110, 165, 0.16));
+    }
+    #art span { display: inline-block; opacity: 0; }
+    #art.run span {
+      animation: pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+                 glim 4.2s ease-in-out infinite;
+    }
+    #art.run span.one {
+      animation: pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    #art.run span.sp { animation: none; opacity: 1; }
+    @keyframes pop {
+      0%   { opacity: 0; transform: scale(0.3); }
+      70%  { opacity: 1; transform: scale(1.18); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes glim {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.5; }
+    }
+
+    /* ---------- подпись и сердечко ---------- */
     .caption {
-      position: fixed;
-      left: 0; right: 0; bottom: 4.5vh;
       display: flex; flex-direction: column; align-items: center; gap: 2px;
       opacity: 0;
       transform: translateY(14px);
       transition: opacity 1.4s ease, transform 1.4s cubic-bezier(0.22, 1, 0.36, 1);
       pointer-events: none;
-      z-index: 5;
     }
     .caption.show { opacity: 1; transform: translateY(0); }
     .caption-text {
       font-family: Georgia, "Times New Roman", "Palatino Linotype", serif;
-      font-size: clamp(30px, 7.5vw, 56px);
+      font-size: clamp(28px, 7vw, 52px);
       letter-spacing: 0.06em;
       color: #fff;
       text-shadow: 0 0 18px rgba(255, 135, 183, 0.45), 0 0 44px rgba(255, 135, 183, 0.25);
     }
     .heart {
-      font-size: clamp(44px, 11vw, 84px);
+      font-size: clamp(42px, 10vw, 78px);
       line-height: 1;
       color: var(--pink);
       text-shadow: 0 0 22px rgba(255, 110, 165, 0.75), 0 0 60px rgba(255, 110, 165, 0.4);
@@ -56,6 +94,32 @@
       24%      { transform: scale(1); }
       36%      { transform: scale(1.14); }
       50%      { transform: scale(1); }
+    }
+
+    /* ---------- падающие лепестки-символы ---------- */
+    .fall {
+      position: fixed;
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      color: #f3a3c9;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    /* ---------- искорки ---------- */
+    .spk {
+      position: fixed;
+      font-family: "JetBrains Mono", monospace;
+      color: #ffd7e8;
+      pointer-events: none;
+      opacity: 0;
+      animation: twinkle 3s ease-in-out infinite;
+      z-index: 2;
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.05; }
+      50%      { opacity: 0.8; }
     }
 
     /* ---------- стартовый оверлей ---------- */
@@ -88,7 +152,7 @@
       50%      { opacity: 1; letter-spacing: 0.08em; }
     }
 
-    /* ---------- кнопка повтора мелодии ---------- */
+    /* ---------- кнопка мелодии ---------- */
     #musicBtn {
       position: fixed; top: 14px; right: 14px; z-index: 50;
       width: 42px; height: 42px; border-radius: 50%;
@@ -106,11 +170,12 @@
   </style>
 </head>
 <body>
-  <canvas id="c"></canvas>
-
-  <div class="caption" id="caption" aria-hidden="true">
-    <div class="caption-text">Для тебя</div>
-    <div class="heart">♥</div>
+  <div id="stage">
+    <div id="art" aria-hidden="true"></div>
+    <div class="caption" id="caption" aria-hidden="true">
+      <div class="caption-text">Для тебя</div>
+      <div class="heart">♥</div>
+    </div>
   </div>
 
   <button id="musicBtn" title="Играть мелодию ещё раз" aria-label="Играть мелодию ещё раз">♪</button>
@@ -124,411 +189,264 @@
   (function () {
     "use strict";
 
-    var canvas = document.getElementById("c");
-    var ctx = canvas.getContext("2d");
-    var overlay = document.getElementById("tapOverlay");
-    var caption = document.getElementById("caption");
-    var musicBtn = document.getElementById("musicBtn");
+    /* ================= палитра символов =================
+       @ # O o ~ . — лепестки роз (тёмный розовый → блик)
+       ; | / \ , ^ — стебли и листья (зелёные оттенки)
+       : = -       — кремовая обёртка
+       *           — розовая лента
+    */
+    var COL = {
+      '@': '#b03a68', '#': '#d16392', 'O': '#f0a3c8', 'o': '#f7c4da',
+      '~': '#fbe3ef', '.': '#fff4f9',
+      ';': '#3d6b3d', '|': '#588a4e', '/': '#588a4e', '\\': '#3d6b3d',
+      ',': '#7fae70', '^': '#9cc98b',
+      ':': '#f4ebd9', '=': '#e8d9c1', '-': '#d6c2a6',
+      '*': '#ef9cc4'
+    };
+    var PETAL = { '@': 1, '#': 1, 'O': 1, 'o': 1, '~': 1, '.': 1 };
 
-    var W = 0, H = 0, M = 0, DPR = 1;
-    var TAU = Math.PI * 2;
-    var started = false;
-    var t0 = 0;
+    var W = 56, H = 50;
 
-    /* ================= утилиты ================= */
-    function clamp01(x) { return x < 0 ? 0 : (x > 1 ? 1 : x); }
-    function easeOutCubic(x) { x = clamp01(x); return 1 - Math.pow(1 - x, 3); }
-    function easeOutBack(x) {
-      x = clamp01(x);
-      var s = 1.35;
-      return 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2);
-    }
-    function lerp(a, b, t) { return a + (b - a) * t; }
-
-    function hexToRgb(h) {
-      var n = parseInt(h.slice(1), 16);
-      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-    }
-    function mix(c1, c2, t) {
-      var a = hexToRgb(c1), b = hexToRgb(c2);
-      return "rgb(" + Math.round(lerp(a[0], b[0], t)) + "," +
-                    Math.round(lerp(a[1], b[1], t)) + "," +
-                    Math.round(lerp(a[2], b[2], t)) + ")";
-    }
-
-    /* ================= раскладка ================= */
-    // 3 розетки пионов: центр крупная, по бокам поменьше
-    var HEADS = [
-      { x: 0.500, y: 0.300, r: 0.210, phase: 0.0, order: 0 },
-      { x: 0.315, y: 0.430, r: 0.155, phase: 1.3, order: 1 },
-      { x: 0.685, y: 0.450, r: 0.150, phase: 2.2, order: 2 }
+    /* ================= шаблоны роз (ручная символьная графика) ================= */
+    var ROSE_BIG = [
+      "               .~=o~.",
+      "          .~=oO########Oo~.",
+      "        ~oO########@@########Oo~",
+      "      ~oO########@  .~o~.  @########Oo~",
+      "     oO########@   oO#O#o   @########Oo",
+      "     O########@   oO#@O@o   @########O",
+      "    ~O########@##oO#@O@Oo##@########O~",
+      "    O########@###oO#@O#o###@########O",
+      "   ~O########@####oO#@O@Oo####@########O~",
+      "   O########@#####oO#@O#o#####@########O",
+      "   O########@####oO#@O@Oo####@########O",
+      "   ~O########@###oO#@O#o###@########O~",
+      "    O########@##oO#@O@Oo##@########O",
+      "    ~O########@##oO#@O#o##@########O~",
+      "     O########@   oO#@O@o   @########O",
+      "     oO########@   oO#O#o   @########Oo",
+      "      ~oO########@  .~o~.  @########Oo~",
+      "        ~oO########@@########Oo~",
+      "          .~=oO########Oo~.",
+      "               .~=o~."
     ];
-    var WRAP_TOP_Y = 0.585, WRAP_BOTTOM_Y = 0.970;
-
-    // слои лепестков пиона: от внешнего к внутреннему
-    var LAYERS = [
-      { count: 10, len: 1.00, wid: 0.52, dark: "#c85a8e", light: "#f2a9c8" },
-      { count: 8,  len: 0.74, wid: 0.47, dark: "#d96ba0", light: "#f8c3d9" },
-      { count: 7,  len: 0.50, wid: 0.40, dark: "#e88bb5", light: "#fddae8" }
+    var ROSE_MED = [
+      "          .~=o~.",
+      "      .~=oO######Oo~.",
+      "    ~oO##########Oo~",
+      "   oO#####@ .~o~. @#####Oo",
+      "  ~O#####@ oO#O#o @#####O~",
+      "  O#####@ oO#@O@o @#####O",
+      " O#####@#oO#@O#o@#####@O",
+      " O#####@oO#@O@Oo@#####@O",
+      " O#####@#oO#@O#o@#####@O",
+      "  ~O#####@ oO#@O@o @#####O~",
+      "   oO#####@ .~o~. @#####Oo",
+      "    ~oO##########Oo~",
+      "      .~=oO######Oo~.",
+      "          .~=o~."
+    ];
+    var ROSE_BUD = [
+      "    .~o~.",
+      "  .oO#O#o.",
+      " oO@##@@Oo",
+      "O@##@@##@O",
+      "O@#@@@@#@O",
+      "O@#@@@@#@O",
+      "O@##@@##@O",
+      " oO@##@@Oo",
+      "  .oO#O#o.",
+      "    .~o~."
     ];
 
-    // предгенерация случайных параметров лепестков (стабильны между кадрами)
-    var headSeeds = HEADS.map(function () {
-      return LAYERS.map(function (L) {
-        var petals = [];
-        for (var i = 0; i < L.count; i++) {
-          petals.push({
-            ang: (i / L.count) * TAU + (Math.random() - 0.5) * 0.35,
-            lenMul: 0.92 + Math.random() * 0.16,
-            widMul: 0.90 + Math.random() * 0.20,
-            tilt: (Math.random() - 0.5) * 0.16,
-            shade: Math.random()
-          });
+    /* ================= сетка ================= */
+    var grid = [];
+    for (var y = 0; y < H; y++) { grid.push(new Array(W).fill(' ')); }
+
+    function put(x, y, ch, overwrite) {
+      x = Math.round(x); y = Math.round(y);
+      if (x < 0 || x >= W || y < 0 || y >= H) return;
+      if (overwrite || grid[y][x] === ' ') grid[y][x] = ch;
+    }
+
+    /* поставить шаблон: (ox,oy) — верхний левый угол */
+    function stamp(t, ox, oy) {
+      for (var y = 0; y < t.length; y++) {
+        for (var x = 0; x < t[y].length; x++) {
+          var ch = t[y][x];
+          if (ch !== ' ') put(ox + x, oy + y, ch, true);
         }
-        return petals;
+      }
+    }
+
+    /* ================= стебель и лист ================= */
+    function stem(x0, y0, x1, y1, bow) {
+      var steps = 30, prev = null;
+      var mx = (x0 + x1) / 2 + bow, my = (y0 + y1) / 2 + 4;
+      for (var i = 0; i <= steps; i++) {
+        var f = i / steps, u = 1 - f;
+        var x = u * u * x0 + 2 * u * f * mx + f * f * x1;
+        var y = u * u * y0 + 2 * u * f * my + f * f * y1;
+        var gx = Math.round(x), gy = Math.round(y);
+        if (prev && (prev.x !== gx || prev.y !== gy)) {
+          var dx = gx - prev.x;
+          var ch = dx > 0 ? '/' : (dx < 0 ? '\\' : '|');
+          put(gx, gy, ch, false);
+        }
+        prev = { x: gx, y: gy };
+      }
+    }
+
+    function leaf(x, y, left) {
+      var s = left ? -1 : 1;
+      put(x + 2 * s, y - 1, ',', false);
+      put(x + 3 * s, y - 1, '^', false);
+      put(x + 1 * s, y, ',', false);
+      put(x + 2 * s, y, '|', false);
+      put(x + 3 * s, y, '^', false);
+      put(x + 2 * s, y + 1, '^', false);
+    }
+
+    /* ================= обёртка (бумага с V-верхом и уголками) ================= */
+    function wrap() {
+      var cx = 28, topC = 30, topEdge = 28, bot = 46;
+      var hwTop = 14, hwBot = 17, slope = (topC - topEdge) / hwTop;
+      for (var y = topEdge; y <= bot; y++) {
+        var f = (y - topEdge) / (bot - topEdge);
+        var hw = hwTop + (hwBot - hwTop) * f;
+        for (var x = Math.round(cx - hw); x <= Math.round(cx + hw); x++) {
+          var vx = Math.abs(x - cx);
+          if (vx > hw) continue;
+          var topY = topC - vx * slope;      // центр ниже, уголки выше
+          if (y < topY) continue;
+          var ch;
+          if (vx <= 3) ch = ':';
+          else if (vx <= hw * 0.62) ch = Math.random() < 0.75 ? ':' : '=';
+          else ch = Math.random() < 0.5 ? '=' : '-';
+          if (vx === 6 || vx === 12) ch = '-';   // складки бумаги
+          if (y === bot) ch = '-';
+          put(x, y, ch, false);
+        }
+      }
+    }
+
+    /* ================= лента и бант ================= */
+    function ribbon() {
+      var cx = 28;
+      for (var y = 37; y <= 38; y++) {
+        var f = (y - 28) / (46 - 28);
+        var hw = 14 + 3 * f - (y === 38 ? 0.6 : 0);
+        for (var x = Math.round(cx - hw); x <= Math.round(cx + hw); x++) {
+          grid[y][x] = Math.random() < 0.6 ? '*' : '#';
+        }
+      }
+      var bow = [
+        [26, 36, '*'], [27, 36, '*'], [29, 36, '*'], [30, 36, '*'], [25, 36, '*'], [31, 36, '*'],
+        [24, 37, '*'], [32, 37, '*'], [25, 38, '*'], [31, 38, '*'],
+        [27, 37, 'o'], [28, 37, 'o'],
+        [26, 39, '*'], [27, 40, '*'], [30, 39, '*'], [29, 40, '*']
+      ];
+      bow.forEach(function (p) { put(p[0], p[1], p[2], true); });
+    }
+
+    /* ================= композиция (сзади наперёд) ================= */
+    stamp(ROSE_BUD, 3, 2);     // бутон, левый угол
+    stamp(ROSE_BUD, 49, 2);    // бутон, правый угол
+    stamp(ROSE_MED, 4, 6);     // левая роза
+    stamp(ROSE_MED, 30, 6);    // правая роза
+    stamp(ROSE_BIG, 11, 1);    // большая центральная роза
+
+    stem(15, 19, 28, 29, -3);
+    stem(28, 21, 28, 29, 0);
+    stem(41, 19, 28, 29, 3);
+
+    leaf(21, 25, true);
+    leaf(35, 25, false);
+    leaf(17, 28, true);
+    leaf(39, 28, false);
+
+    wrap();
+    ribbon();
+
+    /* ================= отрисовка сетки ================= */
+    var art = document.getElementById('art');
+    var html = '';
+    for (var ry = 0; ry < H; ry++) {
+      for (var rx = 0; rx < W; rx++) {
+        var ch = grid[ry][rx];
+        if (ch === ' ') { html += '<span class="sp">\u00a0</span>'; continue; }
+        var d = 0.15 + Math.sqrt(Math.pow(rx - 28, 2) + Math.pow((ry - 15) * 1.1, 2)) * 0.045 + Math.random() * 0.1;
+        var glim = PETAL[ch] && Math.random() < 0.33;
+        var style = 'color:' + COL[ch] + ';animation-delay:' + d.toFixed(2) + 's' +
+                    (glim ? ',' + (d + 1.2 + Math.random() * 2.5).toFixed(2) + 's' : '');
+        html += '<span' + (glim ? '' : ' class="one"') + ' style="' + style + '">' + ch + '</span>';
+      }
+    }
+    art.innerHTML = html;
+
+    /* ================= искорки ================= */
+    for (var s = 0; s < 16; s++) {
+      var el = document.createElement('span');
+      el.className = 'spk';
+      el.textContent = Math.random() < 0.5 ? '.' : '+';
+      el.style.left = (5 + Math.random() * 90) + '%';
+      el.style.top = (3 + Math.random() * 90) + '%';
+      el.style.fontSize = (9 + Math.random() * 8) + 'px';
+      el.style.animationDelay = (Math.random() * 3) + 's';
+      el.style.animationDuration = (2.2 + Math.random() * 2.5) + 's';
+      document.body.appendChild(el);
+    }
+
+    /* ================= падающие лепестки-символы ================= */
+    var fallChars = ['*', '~', 'o', '.'];
+    var falls = [];
+    for (var q = 0; q < 12; q++) {
+      var el = document.createElement('span');
+      el.className = 'fall';
+      el.textContent = fallChars[q % fallChars.length];
+      el.style.fontSize = (10 + Math.random() * 8) + 'px';
+      document.body.appendChild(el);
+      falls.push({
+        el: el,
+        x: Math.random() * 100,
+        y: -10 - Math.random() * 60,
+        vy: 2 + Math.random() * 3,
+        ph: Math.random() * 6.28,
+        rot: Math.random() * 360,
+        vr: (Math.random() - 0.5) * 40
       });
-    });
-
-    /* ================= частицы ================= */
-    var petals = [];
-    for (var p = 0; p < 14; p++) petals.push(newPetal(true));
-    function newPetal(anywhere) {
-      return {
-        x: Math.random() * W,
-        y: anywhere ? Math.random() * H : -20,
-        vy: 18 + Math.random() * 26,
-        vx: (Math.random() - 0.5) * 14,
-        rot: Math.random() * TAU,
-        vr: (Math.random() - 0.5) * 1.6,
-        s: 5 + Math.random() * 7,
-        a: 0.28 + Math.random() * 0.35
-      };
     }
-    var sparkles = [];
-    for (var s = 0; s < 22; s++) sparkles.push({
-      x: Math.random(), y: Math.random(),
-      ph: Math.random() * TAU, sp: 0.6 + Math.random() * 1.4,
-      r: 0.6 + Math.random() * 1.4
-    });
-
-    /* ================= размеры ================= */
-    function resize() {
-      DPR = Math.min(window.devicePixelRatio || 1, 2);
-      W = window.innerWidth; H = window.innerHeight;
-      M = Math.min(W, H);
-      canvas.width = Math.round(W * DPR);
-      canvas.height = Math.round(H * DPR);
-      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    }
-    window.addEventListener("resize", resize);
-    resize();
-
-    /* ================= рисунок: лепесток ================= */
-    function petalPath(len, wid) {
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.bezierCurveTo(-wid, -len * 0.30, -wid * 0.95, -len * 0.70, -wid * 0.35, -len * 0.92);
-      // рваный, волнистый край лепестка
-      ctx.quadraticCurveTo(-wid * 0.48, -len * 1.05, -wid * 0.18, -len * 1.00);
-      ctx.quadraticCurveTo(-wid * 0.10, -len * 0.90, 0, -len * 0.93);
-      ctx.quadraticCurveTo(wid * 0.10, -len * 0.90, wid * 0.18, -len * 1.00);
-      ctx.quadraticCurveTo(wid * 0.48, -len * 1.05, wid * 0.35, -len * 0.92);
-      ctx.bezierCurveTo(wid * 0.95, -len * 0.70, wid, -len * 0.30, 0, 0);
-      ctx.closePath();
-    }
-
-    function drawPeony(head, cx, cy, t) {
-      var R = head.r * M;
-      var sway = Math.sin(t * 0.8 + head.phase) * 0.03;
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(sway);
-
-      // мягкая тень-подсветка под розеткой
-      var glow = ctx.createRadialGradient(0, 0, R * 0.2, 0, 0, R * 1.5);
-      glow.addColorStop(0, "rgba(255,140,190,0.14)");
-      glow.addColorStop(1, "rgba(255,140,190,0)");
-      ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.arc(0, 0, R * 1.5, 0, TAU); ctx.fill();
-
-      var headStart = 0.35 + head.order * 0.35;
-
-      for (var li = 0; li < LAYERS.length; li++) {
-        var L = LAYERS[li];
-        var petals_ = headSeeds[head.phase === 0 ? 0 : (head.phase === 1.3 ? 1 : 2)][li];
-        for (var i = 0; i < L.count; i++) {
-          var pt = petals_[i];
-          var delay = headStart + li * 0.16 + i * 0.05;
-          var pr = clamp01((t - delay) / 1.15);
-          if (pr <= 0) continue;
-          var sc = easeOutBack(pr);
-          var len = R * L.len * pt.lenMul * sc;
-          var wid = R * L.wid * pt.widMul * sc;
-          var ang = pt.ang + pt.tilt * (1 - pr) * 2;
-
-          ctx.save();
-          ctx.rotate(ang);
-          var g = ctx.createLinearGradient(0, 0, 0, -len * 1.02);
-          g.addColorStop(0, mix(L.dark, L.light, 0.10 + pt.shade * 0.10));
-          g.addColorStop(0.55, L.dark);
-          g.addColorStop(1, mix(L.light, "#ffffff", pt.shade * 0.25));
-          ctx.fillStyle = g;
-          ctx.strokeStyle = "rgba(150,45,95,0.28)";
-          ctx.lineWidth = Math.max(0.6, M * 0.0008);
-          petalPath(len, wid);
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
+    var lastT = 0;
+    function fallFrame(now) {
+      var t = now / 1000;
+      var dt = Math.min(0.05, t - lastT || 0.016);
+      lastT = t;
+      if (t > 1.2) {
+        for (var i = 0; i < falls.length; i++) {
+          var p = falls[i];
+          p.y += p.vy * dt * 8;
+          p.x += Math.sin(t * 0.9 + p.ph) * dt * 3;
+          p.rot += p.vr * dt;
+          if (p.y > 108) { p.y = -8 - Math.random() * 30; p.x = Math.random() * 100; }
+          p.el.style.opacity = '0.75';
+          p.el.style.left = p.x + 'vw';
+          p.el.style.top = p.y + 'vh';
+          p.el.style.transform = 'rotate(' + p.rot + 'deg)';
         }
       }
-
-      // центр: пыльник
-      var centerPr = easeOutCubic(clamp01((t - headStart - 0.55) / 0.8));
-      if (centerPr > 0) {
-        ctx.save();
-        ctx.scale(centerPr, centerPr);
-        ctx.fillStyle = "#fbe9f2";
-        ctx.beginPath(); ctx.arc(0, 0, R * 0.11, 0, TAU); ctx.fill();
-        for (var k = 0; k < 10; k++) {
-          var a2 = (k / 10) * TAU + 0.3;
-          var d1 = R * 0.06, d2 = R * 0.13;
-          ctx.strokeStyle = "rgba(244,201,93,0.9)";
-          ctx.lineWidth = Math.max(0.7, M * 0.0009);
-          ctx.beginPath();
-          ctx.moveTo(Math.cos(a2) * d1, Math.sin(a2) * d1);
-          ctx.lineTo(Math.cos(a2) * d2, Math.sin(a2) * d2);
-          ctx.stroke();
-          ctx.fillStyle = "#f4c95d";
-          ctx.beginPath();
-          ctx.arc(Math.cos(a2) * d2, Math.sin(a2) * d2, Math.max(1, M * 0.0022), 0, TAU);
-          ctx.fill();
-        }
-        ctx.restore();
-      }
-      ctx.restore();
+      requestAnimationFrame(fallFrame);
     }
-
-    /* ================= рисунок: стебли, листья ================= */
-    function stemPoint(head, f, swayAmp) {
-      // P0 — основание цветка, P1 — точка сборки букета
-      var x0 = head.x * W, y0 = head.y * H + head.r * M * 0.55;
-      var x1 = W * 0.5, y1 = H * (WRAP_TOP_Y + 0.05);
-      var mx = (x0 + x1) / 2 + Math.sin(tGlobal * 0.7 + head.phase) * swayAmp;
-      var my = (y0 + y1) / 2 + 14;
-      var u = 1 - f;
-      var x = u * u * x0 + 2 * u * f * mx + f * f * x1;
-      var y = u * u * y0 + 2 * u * f * my + f * f * y1;
-      return { x: x, y: y,
-               dx: 2 * u * (mx - x0) + 2 * f * (x1 - mx),
-               dy: 2 * u * (my - y0) + 2 * f * (y1 - my) };
-    }
-
-    var tGlobal = 0;
-
-    function drawStems(t) {
-      ctx.lineCap = "round";
-      for (var i = 0; i < HEADS.length; i++) {
-        var head = HEADS[i];
-        var grow = easeOutCubic(clamp01((t - 0.15 - head.order * 0.12) / 0.7));
-        if (grow <= 0) continue;
-        ctx.strokeStyle = "#4d7c49";
-        ctx.lineWidth = Math.max(3, M * 0.011);
-        ctx.beginPath();
-        var N = 18;
-        for (var j = 0; j <= N; j++) {
-          var f = (j / N) * grow;
-          var pt = stemPoint(head, f, M * 0.012);
-          if (j === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
-        }
-        ctx.stroke();
-
-        // листик на стебле
-        var lf = 0.55;
-        var lp = easeOutCubic(clamp01((t - 0.55 - head.order * 0.12) / 0.6));
-        if (lp > 0) {
-          var lp2 = stemPoint(head, lf, M * 0.012);
-          var side = i === 1 ? -1 : 1;
-          var la = Math.atan2(lp2.dy, lp2.dx) + side * 0.9;
-          var llen = M * 0.075 * lp;
-          ctx.save();
-          ctx.translate(lp2.x, lp2.y);
-          ctx.rotate(la);
-          ctx.fillStyle = "#5d8f58";
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.bezierCurveTo(llen * 0.35, -llen * 0.30, llen * 0.78, -llen * 0.24, llen, 0);
-          ctx.bezierCurveTo(llen * 0.78, llen * 0.24, llen * 0.35, llen * 0.30, 0, 0);
-          ctx.closePath();
-          ctx.fill();
-          ctx.strokeStyle = "rgba(30,60,30,0.5)";
-          ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.moveTo(llen * 0.08, 0); ctx.lineTo(llen * 0.9, 0); ctx.stroke();
-          ctx.restore();
-        }
-      }
-    }
-
-    /* ================= рисунок: обёртка и бант ================= */
-    function drawWrap(t) {
-      var a = easeOutCubic(clamp01((t - 0.25) / 0.8));
-      if (a <= 0) return;
-      ctx.save();
-      ctx.globalAlpha = a;
-
-      var cx = W * 0.5;
-      var topY = H * WRAP_TOP_Y;
-      var botY = H * WRAP_BOTTOM_Y;
-      var hwT = M * 0.135, hwB = M * 0.185;
-
-      // бумага
-      var g = ctx.createLinearGradient(cx - hwB, 0, cx + hwB, 0);
-      g.addColorStop(0, "#efe5d5");
-      g.addColorStop(0.5, "#f8f1e6");
-      g.addColorStop(1, "#e5d9c7");
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.moveTo(cx - hwT, topY + H * 0.055);
-      ctx.lineTo(cx, topY);
-      ctx.lineTo(cx + hwT, topY + H * 0.055);
-      ctx.lineTo(cx + hwB, botY);
-      ctx.lineTo(cx - hwB, botY);
-      ctx.closePath();
-      ctx.fill();
-
-      // складки
-      ctx.strokeStyle = "rgba(90,70,50,0.16)";
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(cx, topY); ctx.lineTo(cx - hwB * 0.55, botY); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(cx, topY); ctx.lineTo(cx + hwB * 0.55, botY); ctx.stroke();
-
-      // лента
-      var ry = lerp(topY, botY, 0.38);
-      var halfAtRy = lerp(hwT, hwB, 0.38);
-      var rh = Math.max(8, H * 0.026);
-      var rg = ctx.createLinearGradient(0, ry - rh, 0, ry + rh);
-      rg.addColorStop(0, "#f7a8c6");
-      rg.addColorStop(1, "#e07ba8");
-      ctx.fillStyle = rg;
-      ctx.beginPath();
-      ctx.moveTo(cx - halfAtRy, ry - rh / 2 + 3);
-      ctx.quadraticCurveTo(cx, ry - rh / 2 - 4, cx + halfAtRy, ry - rh / 2 + 3);
-      ctx.lineTo(cx + halfAtRy, ry + rh / 2 + 3);
-      ctx.quadraticCurveTo(cx, ry + rh / 2 - 4, cx - halfAtRy, ry + rh / 2 + 3);
-      ctx.closePath();
-      ctx.fill();
-
-      // бантик
-      var bx = cx, by = ry;
-      var lx = M * 0.042, ly = M * 0.024;
-      ctx.fillStyle = "#f291b6";
-      ctx.strokeStyle = "#c96a95";
-      ctx.lineWidth = 1.2;
-      // хвостики
-      ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.quadraticCurveTo(bx - lx * 0.7, by + ly * 1.6, bx - lx * 0.9, by + ly * 2.6);
-      ctx.quadraticCurveTo(bx - lx * 0.3, by + ly * 1.8, bx, by + ly * 0.6);
-      ctx.closePath(); ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.quadraticCurveTo(bx + lx * 0.7, by + ly * 1.6, bx + lx * 0.9, by + ly * 2.6);
-      ctx.quadraticCurveTo(bx + lx * 0.3, by + ly * 1.8, bx, by + ly * 0.6);
-      ctx.closePath(); ctx.fill();
-      // петли
-      ctx.beginPath(); ctx.ellipse(bx - lx * 0.95, by - ly * 0.35, lx, ly, -0.45, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(bx + lx * 0.95, by - ly * 0.35, lx, ly,  0.45, 0, TAU); ctx.fill(); ctx.stroke();
-      // узелок
-      ctx.fillStyle = "#e07ba8";
-      ctx.beginPath(); ctx.arc(bx, by, ly * 0.5, 0, TAU); ctx.fill();
-
-      ctx.restore();
-    }
-
-    /* ================= частицы: лепестки и мерцания ================= */
-    function updatePetals(dt, t) {
-      for (var i = 0; i < petals.length; i++) {
-        var pt = petals[i];
-        pt.y += pt.vy * dt;
-        pt.x += (pt.vx + Math.sin(t * 1.2 + i) * 8) * dt;
-        pt.rot += pt.vr * dt;
-        if (pt.y > H + 24) petals[i] = newPetal(false);
-      }
-      ctx.save();
-      for (var j = 0; j < petals.length; j++) {
-        var q = petals[j];
-        ctx.save();
-        ctx.translate(q.x, q.y);
-        ctx.rotate(q.rot);
-        ctx.globalAlpha = q.a;
-        ctx.fillStyle = "#f4a9c9";
-        petalPath(q.s * 1.6, q.s * 0.8);
-        ctx.fill();
-        ctx.restore();
-      }
-      ctx.restore();
-    }
-
-    function drawSparkles(t) {
-      ctx.save();
-      for (var i = 0; i < sparkles.length; i++) {
-        var sp = sparkles[i];
-        var tw = (Math.sin(t * sp.sp + sp.ph) + 1) / 2;
-        ctx.globalAlpha = 0.10 + tw * 0.45;
-        ctx.fillStyle = tw > 0.75 ? "#ffd7e8" : "#ffffff";
-        ctx.beginPath();
-        ctx.arc(sp.x * W, sp.y * H, sp.r * (0.6 + tw * 0.7), 0, TAU);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-
-    /* ================= главный цикл ================= */
-    var lastNow = 0;
-    function frame(nowMs) {
-      var now = nowMs / 1000;
-      var dt = Math.min(0.05, now - lastNow || 0.016);
-      lastNow = now;
-      tGlobal = now;
-
-      ctx.clearRect(0, 0, W, H);
-
-      // фон
-      ctx.fillStyle = "#070408";
-      ctx.fillRect(0, 0, W, H);
-      var bg = ctx.createRadialGradient(W * 0.5, H * 0.42, M * 0.05, W * 0.5, H * 0.42, M * 0.75);
-      bg.addColorStop(0, "rgba(255,120,175,0.07)");
-      bg.addColorStop(1, "rgba(255,120,175,0)");
-      ctx.fillStyle = bg;
-      ctx.fillRect(0, 0, W, H);
-
-      drawSparkles(now);
-
-      if (started) {
-        var t = now - t0;
-        drawStems(t);
-        drawWrap(t);
-        for (var i = 0; i < HEADS.length; i++) {
-          drawPeony(HEADS[i], HEADS[i].x * W, HEADS[i].y * H, t);
-        }
-        updatePetals(dt, now);
-
-        if (t > 1.7 && !caption.classList.contains("show")) {
-          caption.classList.add("show");
-        }
-      }
-      requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
+    requestAnimationFrame(fallFrame);
 
     /* ================= музыка (Web Audio, без файлов) ================= */
     var actx = null, masterGain = null;
     function ensureAudio() {
-      if (actx) { if (actx.state === "suspended") actx.resume(); return; }
+      if (actx) { if (actx.state === 'suspended') actx.resume(); return; }
       var AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       actx = new AC();
       var filt = actx.createBiquadFilter();
-      filt.type = "lowpass"; filt.frequency.value = 4200;
+      filt.type = 'lowpass'; filt.frequency.value = 4200;
       masterGain = actx.createGain();
       masterGain.gain.value = 0.9;
       filt.connect(masterGain);
@@ -537,11 +455,10 @@
     function playMusicBoxNote(freq, when, dur) {
       if (!actx) return;
       var t0n = actx.currentTime + when;
-      // основной тон + две слабые гармоники — звук «шкатулки»
-      var partials = [ [1, 0.16], [2.0, 0.045], [4.2, 0.012] ];
+      var partials = [[1, 0.16], [2.0, 0.045], [4.2, 0.012]];
       for (var i = 0; i < partials.length; i++) {
         var o = actx.createOscillator();
-        o.type = "sine";
+        o.type = 'sine';
         o.frequency.value = freq * partials[i][0];
         o.detune.value = (Math.random() - 0.5) * 5;
         var g = actx.createGain();
@@ -558,28 +475,33 @@
       ensureAudio();
       if (!actx) return;
       var step = 0.30;
-      for (var i = 0; i < MELODY.length; i++) {
-        playMusicBoxNote(MELODY[i], i * step, 1.7);
-      }
+      for (var i = 0; i < MELODY.length; i++) playMusicBoxNote(MELODY[i], i * step, 1.7);
     }
 
     /* ================= запуск ================= */
+    var started = false;
+    var overlay = document.getElementById('tapOverlay');
+    var caption = document.getElementById('caption');
+    var musicBtn = document.getElementById('musicBtn');
+
     function start() {
       if (started) return;
       started = true;
-      t0 = performance.now() / 1000;
-      overlay.classList.add("dismissed");
-      musicBtn.classList.add("on");
+      overlay.classList.add('dismissed');
+      musicBtn.classList.add('on');
       playMelody();
+      var begin = function () {
+        art.classList.add('run');
+        setTimeout(function () { caption.classList.add('show'); }, 2300);
+      };
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(begin);
+      else begin();
     }
-    overlay.addEventListener("pointerdown", start, { once: true });
-    window.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" || e.key === " ") start();
+    overlay.addEventListener('pointerdown', start, { once: true });
+    window.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') start();
     }, { once: true });
-    musicBtn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      playMelody();
-    });
+    musicBtn.addEventListener('click', function (e) { e.stopPropagation(); playMelody(); });
   })();
   </script>
 </body>
